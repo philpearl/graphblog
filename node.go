@@ -39,11 +39,16 @@ type node struct {
 	id nodeId
 
 	// adjacent edges
-	adj map[nodeId]*node
+	adj []nodeId
 }
 
 func (n *node) add(adjNode *node) {
-	n.adj[adjNode.id] = adjNode
+	for _, id := range n.adj {
+		if id == adjNode.id {
+			return
+		}
+	}
+	n.adj = append(n.adj, adjNode.id)
 }
 
 type nodes []node
@@ -51,7 +56,6 @@ type nodes []node
 func (nl nodes) init() {
 	for i := range nl {
 		nl[i].id = nodeId(i)
-		nl[i].adj = make(map[nodeId]*node)
 	}
 }
 
@@ -101,11 +105,11 @@ func (nodes nodes) longestShortestPath(start nodeId, q *list) int {
 		}
 		n = newN
 
-		for id, m := range n.adj {
+		for _, id := range n.adj {
 			bm := bfsData[id]
 			if bm.parent == nil {
 				bfsData[id] = bfsNode{parent: n, depth: bfsData[n.id].depth + 1}
-				q.pushBack(m)
+				q.pushBack(nodes.get(id))
 			}
 		}
 	}
