@@ -70,8 +70,9 @@ func (nl nodes) addEdge(a, b nodeId) {
 // diameter is the maximum length of a shortest path in the network
 func (nodes nodes) diameter() int {
 	var diameter int
+	q := &list{}
 	for id := range nodes {
-		df := nodes.longestShortestPath(nodeId(id))
+		df := nodes.longestShortestPath(nodeId(id), q)
 		if df > diameter {
 			diameter = df
 		}
@@ -85,8 +86,7 @@ type bfsNode struct {
 	depth  int
 }
 
-func (nodes nodes) longestShortestPath(start nodeId) int {
-	q := list.New()
+func (nodes nodes) longestShortestPath(start nodeId, q *list) int {
 
 	bfsData := make([]bfsNode, len(nodes))
 
