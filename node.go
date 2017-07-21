@@ -4,7 +4,38 @@ import (
 	"container/list"
 )
 
-type nodeId string
+type nodeId int32
+type nodeName string
+
+type symbolTable map[nodeName]nodeId
+
+func (s symbolTable) getId(name nodeName) nodeId {
+	id, ok := s[name]
+	if !ok {
+		id = nodeId(len(s))
+		s[name] = id
+	}
+	return id
+}
+
+type graph struct {
+	symbolTable
+	nodes
+}
+
+func New() *graph {
+	return &graph{
+		symbolTable: make(symbolTable),
+		nodes:       make(nodes),
+	}
+}
+
+func (g *graph) addEdge(a, b nodeName) {
+	aid := g.symbolTable.getId(a)
+	bid := g.symbolTable.getId(b)
+
+	g.nodes.addEdge(aid, bid)
+}
 
 type node struct {
 	id nodeId
