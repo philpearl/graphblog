@@ -1,5 +1,10 @@
 package graphblog
 
+import (
+	"runtime"
+	"sync"
+)
+
 type nodeId int32
 type nodeName string
 
@@ -72,19 +77,49 @@ func (nl nodes) addEdge(a, b nodeId) {
 }
 
 // diameter is the maximum length of a shortest path in the network
-func (nodes nodes) diameter() int {
-	var diameter int
-	q := &list{}
-	depths := make([]bfsNode, len(nodes))
-	for id := range nodes {
-		// Need to reset the bfsData between runs
-		for i := range depths {
-			depths[i] = -1
+func (nl nodes) diameter() int {
+
+	cpus := runtime.NumCPU()
+	numNodes := len(nl)
+	nodesPerCpu := numNodes / cpus
+
+	results := make([]int, cpus)
+	wg := &sync.WaitGroup{}
+	wg.Add(cpus)
+	start := 0
+	for cpu := 0; cpu < cpus; cpu++ {
+		end := start + nodesPerCpu
+		if cpu == cpus-1 {
+			end = numNodes
 		}
 
-		df := nodes.longestShortestPath(nodeId(id), q, depths)
-		if df > diameter {
-			diameter = df
+		go func(cpu int, start, end nodeId) {
+			defer wg.Done()
+			var diameter int
+			q := &list{}
+			depths := make([]bfsNode, numNodes)
+			for id := start; id < end; id++ {
+				// Need to reset the bfsData between runs
+				for i := range depths {
+					depths[i] = -1
+				}
+
+				df := nl.longestShortestPath(nodeId(id), q, depths)
+				if df > diameter {
+					diameter = df
+				}
+			}
+			results[cpu] = diameter
+		}(cpu, nodeId(start), nodeId(end))
+		start += nodesPerCpu
+	}
+
+	wg.Wait()
+
+	diameter := 0
+	for _, result := range results {
+		if result > diameter {
+			diameter = result
 		}
 	}
 	return diameter
