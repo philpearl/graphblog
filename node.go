@@ -75,14 +75,14 @@ func (nl nodes) addEdge(a, b nodeId) {
 func (nodes nodes) diameter() int {
 	var diameter int
 	q := &list{}
-	bfsData := make([]bfsNode, len(nodes))
+	depths := make([]bfsNode, len(nodes))
 	for id := range nodes {
 		// Need to reset the bfsData between runs
-		for i := range bfsData {
-			bfsData[i].depth = -1
+		for i := range depths {
+			depths[i] = -1
 		}
 
-		df := nodes.longestShortestPath(nodeId(id), q, bfsData)
+		df := nodes.longestShortestPath(nodeId(id), q, depths)
 		if df > diameter {
 			diameter = df
 		}
@@ -90,15 +90,13 @@ func (nodes nodes) diameter() int {
 	return diameter
 }
 
-type bfsNode struct {
-	// bfs tracking data
-	depth int
-}
+// bfs tracking data
+type bfsNode int
 
-func (nodes nodes) longestShortestPath(start nodeId, q *list, bfsData []bfsNode) int {
+func (nodes nodes) longestShortestPath(start nodeId, q *list, depths []bfsNode) int {
 
 	n := nodes.get(start)
-	bfsData[n.id] = bfsNode{depth: 0}
+	depths[n.id] = 0
 	q.pushBack(n)
 
 	for {
@@ -107,16 +105,15 @@ func (nodes nodes) longestShortestPath(start nodeId, q *list, bfsData []bfsNode)
 			break
 		}
 		n = newN
-		nextDepth := bfsData[n.id].depth + 1
+		nextDepth := depths[n.id] + 1
 
 		for _, id := range n.adj {
-			bm := &bfsData[id]
-			if bm.depth == -1 {
-				bm.depth = nextDepth
+			if depths[id] == -1 {
+				depths[id] = nextDepth
 				q.pushBack(nodes.get(id))
 			}
 		}
 	}
 
-	return bfsData[n.id].depth
+	return int(depths[n.id])
 }
