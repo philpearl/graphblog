@@ -64,7 +64,7 @@ func TestDiameter(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			g := New()
+			g := New(100)
 			test.edgeList.build(g)
 			dia := g.diameter()
 			if dia != test.expDiameter {
@@ -75,7 +75,7 @@ func TestDiameter(t *testing.T) {
 }
 
 func BenchmarkDiameter(b *testing.B) {
-	g := New()
+	g := New(10000)
 	// Load the test data
 	f, err := os.Open("testdata/edges.txt")
 	assert.NoError(b, err)

@@ -23,11 +23,13 @@ type graph struct {
 	nodes
 }
 
-func New() *graph {
-	return &graph{
-		symbolTable: make(symbolTable),
-		nodes:       make(nodes),
+func New(numNodes int) *graph {
+	g := &graph{
+		symbolTable: make(symbolTable, numNodes),
+		nodes:       make(nodes, numNodes),
 	}
+	g.nodes.init()
+	return g
 }
 
 func (g *graph) addEdge(a, b nodeName) {
@@ -48,23 +50,22 @@ func (n *node) add(adjNode *node) {
 	n.adj[adjNode.id] = adjNode
 }
 
-type nodes map[nodeId]*node
+type nodes []node
 
-func (nodes nodes) get(id nodeId) *node {
-	n, ok := nodes[id]
-	if !ok {
-		n = &node{
-			id:  id,
-			adj: make(map[nodeId]*node),
-		}
-		nodes[id] = n
+func (nl nodes) init() {
+	for i := range nl {
+		nl[i].id = nodeId(i)
+		nl[i].adj = make(map[nodeId]*node)
 	}
-	return n
 }
 
-func (nodes *nodes) addEdge(a, b nodeId) {
-	an := nodes.get(a)
-	bn := nodes.get(b)
+func (nl nodes) get(id nodeId) *node {
+	return &nl[id]
+}
+
+func (nl nodes) addEdge(a, b nodeId) {
+	an := nl.get(a)
+	bn := nl.get(b)
 
 	an.add(bn)
 	bn.add(an)
@@ -74,7 +75,7 @@ func (nodes *nodes) addEdge(a, b nodeId) {
 func (nodes nodes) diameter() int {
 	var diameter int
 	for id := range nodes {
-		df := nodes.longestShortestPath(id)
+		df := nodes.longestShortestPath(nodeId(id))
 		if df > diameter {
 			diameter = df
 		}
@@ -91,7 +92,7 @@ type bfsNode struct {
 func (nodes nodes) longestShortestPath(start nodeId) int {
 	q := list.New()
 
-	bfsData := make(map[nodeId]bfsNode, len(nodes))
+	bfsData := make([]bfsNode, len(nodes))
 
 	n := nodes.get(start)
 	bfsData[n.id] = bfsNode{parent: n, depth: 0}
