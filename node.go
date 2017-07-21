@@ -91,7 +91,7 @@ func (nodes nodes) diameter() int {
 }
 
 // bfs tracking data
-type bfsNode int
+type bfsNode int16
 
 func (nodes nodes) longestShortestPath(start nodeId, q *list, depths []bfsNode) int {
 
@@ -105,11 +105,10 @@ func (nodes nodes) longestShortestPath(start nodeId, q *list, depths []bfsNode) 
 			break
 		}
 		n = newN
-		nextDepth := depths[n.id] + 1
 
 		for _, id := range n.adj {
 			if depths[id] == -1 {
-				depths[id] = nextDepth
+				depths[id] = depths[n.id] + 1
 				q.pushBack(nodes.get(id))
 			}
 		}
