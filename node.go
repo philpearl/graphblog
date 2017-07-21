@@ -1,9 +1,5 @@
 package graphblog
 
-import (
-	"container/list"
-)
-
 type nodeId int32
 type nodeName string
 
@@ -96,20 +92,20 @@ func (nodes nodes) longestShortestPath(start nodeId) int {
 
 	n := nodes.get(start)
 	bfsData[n.id] = bfsNode{parent: n, depth: 0}
-	q.PushBack(n)
+	q.pushBack(n)
 
 	for {
-		elt := q.Front()
-		if elt == nil {
+		newN := q.getHead()
+		if newN == nil {
 			break
 		}
-		n = q.Remove(elt).(*node)
+		n = newN
 
 		for id, m := range n.adj {
 			bm := bfsData[id]
 			if bm.parent == nil {
 				bfsData[id] = bfsNode{parent: n, depth: bfsData[n.id].depth + 1}
-				q.PushBack(m)
+				q.pushBack(m)
 			}
 		}
 	}
