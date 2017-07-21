@@ -75,10 +75,17 @@ func (nl nodes) addEdge(a, b nodeId) {
 func (nodes nodes) diameter() int {
 	var diameter int
 	q := &list{}
+	bfsData := make([]bfsNode, len(nodes))
 	for id := range nodes {
-		df := nodes.longestShortestPath(nodeId(id), q)
+		df := nodes.longestShortestPath(nodeId(id), q, bfsData)
 		if df > diameter {
 			diameter = df
+		}
+		// Need to reset the bfsData between runs
+		for i := range bfsData {
+			d := &bfsData[i]
+			d.depth = 0
+			d.parent = nil
 		}
 	}
 	return diameter
@@ -90,9 +97,7 @@ type bfsNode struct {
 	depth  int
 }
 
-func (nodes nodes) longestShortestPath(start nodeId, q *list) int {
-
-	bfsData := make([]bfsNode, len(nodes))
+func (nodes nodes) longestShortestPath(start nodeId, q *list, bfsData []bfsNode) int {
 
 	n := nodes.get(start)
 	bfsData[n.id] = bfsNode{parent: n, depth: 0}
