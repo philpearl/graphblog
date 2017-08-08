@@ -104,7 +104,7 @@ func (nl nodes) diameter() int {
 					depths[i] = -1
 				}
 
-				df := nl.longestShortestPath(nodeId(id), q, depths)
+				df, _ := nl.longestShortestPath(nodeId(id), q, depths)
 				if df > diameter {
 					diameter = df
 				}
@@ -128,7 +128,7 @@ func (nl nodes) diameter() int {
 // bfs tracking data
 type bfsNode int16
 
-func (nodes nodes) longestShortestPath(start nodeId, q *list, depths []bfsNode) int {
+func (nodes nodes) longestShortestPath(start nodeId, q *list, depths []bfsNode) (int, nodeId) {
 
 	n := nodes.get(start)
 	depths[n.id] = 0
@@ -149,5 +149,24 @@ func (nodes nodes) longestShortestPath(start nodeId, q *list, depths []bfsNode) 
 		}
 	}
 
-	return int(depths[n.id])
+	return int(depths[n.id]), n.id
+}
+
+// diameter is the maximum length of a shortest path in the network
+func (nl nodes) diameter2() int {
+
+	var diameter int
+	q := &list{}
+	depths := make([]bfsNode, len(nl))
+
+	id := nl[0].id
+	for i := 0; i < 3; i++ {
+		// Need to reset the bfsData between runs
+		for j := range depths {
+			depths[j] = -1
+		}
+
+		diameter, id = nl.longestShortestPath(nodeId(id), q, depths)
+	}
+	return diameter
 }
