@@ -1,12 +1,10 @@
 package graphblog
 
 import (
-	"os"
-	"testing"
-
 	"bufio"
-
+	"os"
 	"strings"
+	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -66,7 +64,8 @@ func TestDiameter(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			g := New(100)
 			test.edgeList.build(g)
-			dia := g.diameter()
+			g2 := g.convertToMemoryOptimisedGraph()
+			dia := g2.diameter()
 			if dia != test.expDiameter {
 				t.Errorf("Diameter not as expected. Have %d, expected %d", dia, test.expDiameter)
 			}
@@ -88,10 +87,12 @@ func BenchmarkDiameter(b *testing.B) {
 	}
 	assert.NoError(b, err)
 
+	g2 := g.convertToMemoryOptimisedGraph()
+
 	b.Run("diameter", func(b *testing.B) {
 		b.ReportAllocs()
 		for i := 0; i < b.N; i++ {
-			d := g.diameter()
+			d := g2.diameter()
 			assert.Equal(b, 82, d)
 		}
 	})
