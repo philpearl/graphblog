@@ -5,7 +5,7 @@ import (
 	"sync"
 )
 
-type nodeId int32
+type nodeId int
 type nodeName string
 
 type symbolTable map[nodeName]nodeId
@@ -22,6 +22,105 @@ func (s symbolTable) getId(name nodeName) nodeId {
 type graph struct {
 	symbolTable
 	nodes
+	noEdges int32
+}
+
+type graph2 struct {
+	// The node ID is the index into the eStartIdx array
+	eStartIdx []nodeId // array size is no of nodes +1
+	edges     []nodeId // array size is no of edges *2 (as each edge is forward/backward)
+}
+
+func (g *graph) convertToMemoryOptimisedGraph() *graph2 {
+	numNodes := len(g.nodes)
+	numEdges := g.noEdges
+
+	g2 := &graph2{}
+	g2.eStartIdx = make([]nodeId, numNodes+1, numNodes+1)
+	g2.edges = make([]nodeId, numEdges*2, numEdges*2)
+
+	var edgesPos nodeId
+	for id := 0; id < numNodes; id++ {
+		g2.eStartIdx[id] = edgesPos
+		node := g.nodes[id]
+		for _, adjID := range node.adj {
+			g2.edges[edgesPos] = adjID
+			edgesPos++
+		}
+	}
+	g2.eStartIdx[numNodes] = edgesPos
+
+	return g2.reOrder()
+}
+
+func (g2 *graph2) traversalOrder() []nodeId {
+	numNodes := len(g2.eStartIdx) - 1
+	if numNodes == 0 {
+		return nil
+	}
+
+	q := &list{}
+	visited := make([]bool, numNodes)
+
+	var n nodeId // starting node 0 so no need to initalise it
+
+	order := make([]nodeId, 0, numNodes)
+
+	for n = 0; n < nodeId(numNodes); n++ { // Loop through all component ids -
+		if visited[n] {
+			continue
+		}
+		q.pushBack(n)
+		visited[n] = true
+		for { // Do BFS
+
+			nodeID := q.getHead()
+			if nodeID == -1 {
+				break
+			}
+			order = append(order, nodeID)
+			for edgesIdx := g2.eStartIdx[nodeID]; edgesIdx < g2.eStartIdx[nodeID+1]; edgesIdx++ {
+				id := g2.edges[edgesIdx]
+				if !visited[id] {
+					visited[id] = true
+					q.pushBack(id)
+				}
+			}
+		}
+	}
+	return order
+}
+
+func (g2 *graph2) reOrder() *graph2 {
+	numNodes := len(g2.eStartIdx) - 1
+
+	g2New := &graph2{}
+	g2New.eStartIdx = make([]nodeId, len(g2.eStartIdx), len(g2.eStartIdx))
+	g2New.edges = make([]nodeId, len(g2.edges), len(g2.edges))
+
+	// Get the order we traverse the graph in and then use that to reorder the nodeID and edges
+	// to that ordering - idea is that it is more cache efficent.
+	order := g2.traversalOrder()
+
+	// 1st node id is the same but then we rebuid
+	mapOldNew := make(map[nodeId]nodeId)
+	for newID, oldID := range order {
+		mapOldNew[oldID] = nodeId(newID)
+	}
+	var edgesPos nodeId
+	for newID, oldID := range order {
+		g2New.eStartIdx[newID] = edgesPos
+		edgesStartIdx := g2.eStartIdx[oldID]
+		edgesEndIdx := g2.eStartIdx[oldID+1]
+		for edgesIdx := edgesStartIdx; edgesIdx < edgesEndIdx; edgesIdx++ {
+			oldID := g2.edges[edgesIdx]
+			g2New.edges[edgesPos] = mapOldNew[oldID]
+			edgesPos++
+		}
+	}
+	g2New.eStartIdx[numNodes] = edgesPos
+
+	return g2New
 }
 
 func New(numNodes int) *graph {
@@ -36,7 +135,7 @@ func New(numNodes int) *graph {
 func (g *graph) addEdge(a, b nodeName) {
 	aid := g.symbolTable.getId(a)
 	bid := g.symbolTable.getId(b)
-
+	g.noEdges++
 	g.nodes.addEdge(aid, bid)
 }
 
@@ -77,10 +176,10 @@ func (nl nodes) addEdge(a, b nodeId) {
 }
 
 // diameter is the maximum length of a shortest path in the network
-func (nl nodes) diameter() int {
+func (g2 *graph2) diameter() int {
 
 	cpus := runtime.NumCPU()
-	numNodes := len(nl)
+	numNodes := len(g2.eStartIdx) - 1
 	nodesPerCpu := numNodes / cpus
 
 	results := make([]int, cpus)
@@ -104,7 +203,7 @@ func (nl nodes) diameter() int {
 					depths[i] = -1
 				}
 
-				df := nl.longestShortestPath(nodeId(id), q, depths)
+				df := g2.longestShortestPath(nodeId(id), q, depths)
 				if df > diameter {
 					diameter = df
 				}
@@ -128,26 +227,31 @@ func (nl nodes) diameter() int {
 // bfs tracking data
 type bfsNode int16
 
-func (nodes nodes) longestShortestPath(start nodeId, q *list, depths []bfsNode) int {
+func (g2 *graph2) longestShortestPath(start nodeId, q *list, depths []bfsNode) int {
 
-	n := nodes.get(start)
-	depths[n.id] = 0
+	n := start
+	depths[n] = 0
 	q.pushBack(n)
 
 	for {
 		newN := q.getHead()
-		if newN == nil {
+		if newN < 0 {
 			break
 		}
 		n = newN
 
-		for _, id := range n.adj {
+		edgesStartIdx := g2.eStartIdx[n]
+		edgesEndIdx := g2.eStartIdx[n+1]
+		for edgesIdx := edgesStartIdx; edgesIdx < edgesEndIdx; edgesIdx++ {
+
+			id := g2.edges[edgesIdx]
+
 			if depths[id] == -1 {
-				depths[id] = depths[n.id] + 1
-				q.pushBack(nodes.get(id))
+				depths[id] = depths[n] + 1
+				q.pushBack(id)
 			}
 		}
 	}
 
-	return int(depths[n.id])
+	return int(depths[n])
 }
